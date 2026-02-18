@@ -1,45 +1,18 @@
+const SUPABASE_URL = 'https://awzryhowoukjngppvuhy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_jzHlyDfQG9R99EXIT5wKVw_whCWzQmd';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Initial Data
-    const defaultExpenses = [
-        { id: 1, name: 'opłaty internety telefon itd.', amount: 400, type: 'fixed' },
-        { id: 2, name: 'wspólnota', amount: 550, type: 'fixed' },
-        { id: 3, name: 'prąd', amount: 600, type: 'fixed' },
-        { id: 4, name: 'kredo', amount: 1000, type: 'fixed' },
-        { id: 5, name: 'netflixy', amount: 60, type: 'fixed' },
-        { id: 8, name: 'złobek', amount: 220, type: 'fixed' },
-        { id: 14, name: 'ksiegowość', amount: 300, type: 'fixed' },
-        { id: 18, name: 'leasing', amount: 4600, type: 'fixed' },
-        { id: 21, name: 'ubezpieczenie', amount: 360, type: 'fixed' },
-
-        { id: 6, name: 'zachcianki', amount: 800, type: 'variable' },
-        { id: 7, name: 'paliwo', amount: 600, type: 'variable' },
-        { id: 9, name: 'ubrania', amount: 600, type: 'variable' },
-        { id: 10, name: 'aktywność sportowa', amount: 300, type: 'variable' },
-        { id: 11, name: 'Fizjo', amount: 150, type: 'variable' },
-        { id: 12, name: 'bufor', amount: 2000, type: 'variable' },
-        { id: 13, name: 'basen', amount: 250, type: 'variable' },
-        { id: 15, name: 'jedzenie, picie, życie', amount: 4000, type: 'variable' },
-        { id: 16, name: 'Apteka', amount: 200, type: 'variable' },
-        { id: 17, name: 'Wypady z małą', amount: 300, type: 'variable' },
-        { id: 19, name: 'smoczki', amount: 100, type: 'variable' },
-        { id: 20, name: 'stanik Asia', amount: 300, type: 'variable' },
-        { id: 22, name: 'stomatolog', amount: 800, type: 'variable' },
-        { id: 23, name: 'Kawa', amount: 200, type: 'variable' }
-    ];
-
-    // Deep copy helper
-    const deepCopy = (arr) => JSON.parse(JSON.stringify(arr));
-
     // State
     const state = {
         activeTab: 'current',
         current: {
             income: 0,
-            expenses: deepCopy(defaultExpenses)
+            expenses: []
         },
         next: {
             income: 0,
-            expenses: deepCopy(defaultExpenses)
+            expenses: []
         }
     };
 
@@ -47,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const incomeInput = document.getElementById('income');
     const expenseNameInput = document.getElementById('expense-name');
     const expenseAmountInput = document.getElementById('expense-amount');
-    const expenseTypeInput = document.getElementById('expense-type'); // Select element
+    const expenseTypeInput = document.getElementById('expense-type');
     const addExpenseBtn = document.getElementById('add-expense-btn');
     const expensesListFixed = document.getElementById('expenses-list-fixed');
     const expensesListVariable = document.getElementById('expenses-list-variable');
@@ -58,115 +31,195 @@ document.addEventListener('DOMContentLoaded', () => {
     const balanceMessage = document.getElementById('balance-message');
     const tabBtns = document.querySelectorAll('.tab-btn');
 
-    // Initialize view
-    updateView();
+    // -- Initialization --
+    initApp();
 
-    // -- Tab Switching --
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabId = btn.dataset.tab;
-            setActiveTab(tabId);
+    async function initApp() {
+        await fetchInitialData();
+        updateView();
+
+        // -- Event Listeners --
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabId = btn.dataset.tab;
+                setActiveTab(tabId);
+            });
         });
-    });
 
+        incomeInput.addEventListener('change', async (e) => {
+            const value = e.target.value;
+            const parts = value.split('+');
+            let total = 0;
+
+            parts.forEach(part => {
+                const num = parseFloat(part.trim());
+                if (!isNaN(num)) {
+                    total += num;
+                }
+            });
+
+            const activeMonth = state.activeTab;
+            state[activeMonth].income = total;
+
+            await syncIncomeToDb(activeMonth, total);
+            updateSummary();
+        });
+
+        addExpenseBtn.addEventListener('click', addExpense);
+        expenseAmountInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addExpense();
+        });
+    }
+
+    // -- Database Functions --
+    async function fetchInitialData() {
+        try {
+            // Fetch Expenses
+            const { data: expenses, error: expError } = await supabaseClient
+                .from('expenses')
+                .select('*');
+
+            if (expError) throw expError;
+
+            // Fetch Incomes
+            const { data: incomes, error: incError } = await supabaseClient
+                .from('incomes')
+                .select('*');
+
+            if (incError) throw incError;
+
+            // Reset state expenses
+            state.current.expenses = [];
+            state.next.expenses = [];
+
+            expenses.forEach(exp => {
+                if (state[exp.month]) {
+                    state[exp.month].expenses.push({
+                        id: exp.id,
+                        name: exp.name,
+                        amount: exp.amount,
+                        type: exp.type
+                    });
+                }
+            });
+
+            incomes.forEach(inc => {
+                if (state[inc.month]) {
+                    state[inc.month].income = inc.amount;
+                }
+            });
+
+        } catch (error) {
+            console.error('Error fetching data:', error.message);
+            alert('Błąd podczas ładowania danych z bazy.');
+        }
+    }
+
+    async function syncIncomeToDb(month, amount) {
+        const { error } = await supabaseClient
+            .from('incomes')
+            .upsert({ month, amount }, { onConflict: 'month' });
+
+        if (error) console.error('Error syncing income:', error.message);
+    }
+
+    async function addExpenseToDb(expense, month) {
+        const { data, error } = await supabaseClient
+            .from('expenses')
+            .insert([{
+                name: expense.name,
+                amount: expense.amount,
+                type: expense.type,
+                month: month
+            }])
+            .select();
+
+        if (error) {
+            console.error('Error adding expense:', error.message);
+            return null;
+        }
+        return data[0].id;
+    }
+
+    async function removeExpenseFromDb(id) {
+        const { error } = await supabaseClient
+            .from('expenses')
+            .delete()
+            .eq('id', id);
+
+        if (error) console.error('Error removing expense:', error.message);
+    }
+
+    async function updateExpenseInDb(id, updates) {
+        const { error } = await supabaseClient
+            .from('expenses')
+            .update(updates)
+            .eq('id', id);
+
+        if (error) console.error('Error updating expense:', error.message);
+    }
+
+    // -- UI Functions --
     function setActiveTab(tabId) {
         state.activeTab = tabId;
-
-        // Update UI buttons
         tabBtns.forEach(btn => {
-            if (btn.dataset.tab === tabId) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            btn.classList.toggle('active', btn.dataset.tab === tabId);
         });
-
         updateView();
     }
 
-    // -- Core Functions --
-    function getActiveData() {
-        return state[state.activeTab];
-    }
-
     function updateView() {
-        const data = getActiveData();
-
-        // Update Income Input
+        const data = state[state.activeTab];
         incomeInput.value = data.income > 0 ? data.income : '';
-
         renderExpenses();
         updateSummary();
     }
 
-    // Event Listeners
-    incomeInput.addEventListener('input', (e) => {
-        const value = e.target.value;
-        const parts = value.split('+');
-        let total = 0;
-
-        parts.forEach(part => {
-            const num = parseFloat(part.trim());
-            if (!isNaN(num)) {
-                total += num;
-            }
-        });
-
-        getActiveData().income = total;
-        updateSummary();
-    });
-
-    addExpenseBtn.addEventListener('click', addExpense);
-
-    expenseAmountInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            addExpense();
-        }
-    });
-
-    function addExpense() {
+    async function addExpense() {
         const name = expenseNameInput.value.trim();
         const amount = parseFloat(expenseAmountInput.value);
         const type = expenseTypeInput.value;
+        const month = state.activeTab;
 
         if (name === '' || isNaN(amount) || amount <= 0) {
             alert('Proszę podać poprawną nazwę i kwotę wydatku.');
             return;
         }
 
-        const expense = {
-            id: Date.now(),
-            name: name,
-            amount: amount,
-            type: type
-        };
+        const tempId = Date.now().toString(); // Temporary ID until DB returns real one
+        const expense = { id: tempId, name, amount, type };
 
-        getActiveData().expenses.push(expense);
+        state[month].expenses.push(expense);
 
-        // Reset inputs
+        // Reset inputs immediately for better UX
         expenseNameInput.value = '';
         expenseAmountInput.value = '';
         expenseNameInput.focus();
 
         renderExpenses();
         updateSummary();
+
+        // Sync to DB
+        const realId = await addExpenseToDb(expense, month);
+        if (realId) {
+            expense.id = realId; // Update with real DB ID
+            // Refresh listener dataset if needed, but since we re-render often it's ok
+            renderExpenses();
+        }
     }
 
-    function removeExpense(id) {
-        const data = getActiveData();
-        data.expenses = data.expenses.filter(expense => expense.id !== id);
+    async function removeExpense(id) {
+        state[state.activeTab].expenses = state[state.activeTab].expenses.filter(exp => exp.id !== id);
         renderExpenses();
         updateSummary();
+        await removeExpenseFromDb(id);
     }
 
     function renderExpenses() {
-        const data = getActiveData();
-
-        // Clear both lists
+        const data = state[state.activeTab];
         expensesListFixed.innerHTML = '';
         expensesListVariable.innerHTML = '';
 
-        // Add drop zone listeners to lists
         [expensesListFixed, expensesListVariable].forEach(list => {
             list.addEventListener('dragover', handleDragOver);
             list.addEventListener('dragleave', handleDragLeave);
@@ -174,8 +227,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (data.expenses.length === 0) {
-            expensesListFixed.innerHTML = '<li class="empty-state">Brak wydatków</li>';
-            expensesListVariable.innerHTML = '<li class="empty-state">Brak wydatków</li>';
+            expensesListFixed.innerHTML = '<li class="empty-state">Brak kosztów stałych</li>';
+            expensesListVariable.innerHTML = '<li class="empty-state">Brak kosztów zmiennych</li>';
             return;
         }
 
@@ -196,42 +249,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="delete-btn" aria-label="Usuń wydatek">&times;</button>
             `;
 
-            // Drag Start/End
-            li.addEventListener('dragstart', () => {
-                li.classList.add('dragging');
-            });
+            li.addEventListener('dragstart', () => li.classList.add('dragging'));
+            li.addEventListener('dragend', () => li.classList.remove('dragging'));
 
-            li.addEventListener('dragend', () => {
-                li.classList.remove('dragging');
-            });
-
-            // Inputs
             const nameInput = li.querySelector('.expense-name-input');
             const amountInput = li.querySelector('.expense-amount-input');
+            const deleteBtn = li.querySelector('.delete-btn');
 
-            // Prevent drag when interacting with inputs
             nameInput.addEventListener('mousedown', (e) => e.stopPropagation());
             amountInput.addEventListener('mousedown', (e) => e.stopPropagation());
-
-            // Event listener for name change
-            nameInput.addEventListener('change', (e) => {
-                expense.name = e.target.value.trim();
-            });
-
-            // Event listener for amount change
-            amountInput.addEventListener('input', (e) => {
-                const val = parseFloat(e.target.value);
-                expense.amount = isNaN(val) ? 0 : val;
-                updateSummary();
-            });
-
-            const deleteBtn = li.querySelector('.delete-btn');
-            const currentId = expense.id;
-            // Prevent drag on delete button too
             deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
-            deleteBtn.addEventListener('click', () => removeExpense(currentId));
 
-            // Append to correct list
+            nameInput.addEventListener('change', async (e) => {
+                const newName = e.target.value.trim();
+                expense.name = newName;
+                await updateExpenseInDb(expense.id, { name: newName });
+            });
+
+            amountInput.addEventListener('change', async (e) => {
+                const newVal = parseFloat(e.target.value);
+                expense.amount = isNaN(newVal) ? 0 : newVal;
+                updateSummary();
+                await updateExpenseInDb(expense.id, { amount: expense.amount });
+            });
+
+            deleteBtn.addEventListener('click', () => removeExpense(expense.id));
+
             if (expense.type === 'fixed') {
                 expensesListFixed.appendChild(li);
             } else {
@@ -239,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Handle empty states per list
         if (expensesListFixed.children.length === 0) {
             expensesListFixed.innerHTML = '<li class="empty-state">Brak kosztów stałych</li>';
         }
@@ -248,9 +290,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Drag and Drop Handlers
     function handleDragOver(e) {
-        e.preventDefault(); // Necessary to allow dropping
+        e.preventDefault();
         const container = e.currentTarget.closest('.expense-column');
         container.classList.add('drag-over');
     }
@@ -260,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
         container.classList.remove('drag-over');
     }
 
-    function handleDrop(e) {
+    async function handleDrop(e) {
         e.preventDefault();
         const container = e.currentTarget.closest('.expense-column');
         container.classList.remove('drag-over');
@@ -268,23 +309,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const draggingItem = document.querySelector('.dragging');
         if (!draggingItem) return;
 
-        const expenseId = parseInt(draggingItem.dataset.id);
-        const targetListId = e.currentTarget.id; // expenses-list-fixed or expenses-list-variable
-
+        const expenseId = draggingItem.dataset.id;
+        const targetListId = e.currentTarget.id;
         const newType = targetListId === 'expenses-list-fixed' ? 'fixed' : 'variable';
 
-        const data = getActiveData();
-        const expense = data.expenses.find(exp => exp.id === expenseId);
+        const expense = state[state.activeTab].expenses.find(exp => exp.id == expenseId);
 
         if (expense && expense.type !== newType) {
             expense.type = newType;
             renderExpenses();
-            updateSummary(); // Summary is same, but good practice
+            await updateExpenseInDb(expenseId, { type: newType });
         }
     }
 
     function updateSummary() {
-        const data = getActiveData();
+        const data = state[state.activeTab];
         const totalExpenses = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
         const balance = data.income - totalExpenses;
 
