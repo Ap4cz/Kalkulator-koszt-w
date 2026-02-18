@@ -11,6 +11,8 @@
     /* Slate 800 */
     --text-secondary: #64748b;
     /* Slate 500 */
+    --bg-accent: #f5f3ff;
+    /* Transparent version of primary */
 
     --success-bg: #dcfce7;
     /* Emerald 100 */
@@ -42,8 +44,9 @@
 
 body {
     font-family: var(--font-family);
-    background-color: var(--bg-color);
+    background-color: var(--bg-accent);
     color: var(--text-main);
+    transition: background-color 0.5s ease;
     line-height: 1.6;
     padding: 24px;
     -webkit-font-smoothing: antialiased;
