@@ -1,0 +1,11 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Idea files
+.vscode/
+.idea/
+
+# Potential build folders
+dist/
+build/
