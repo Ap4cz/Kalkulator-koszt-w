@@ -246,7 +246,7 @@ h2 {
     /* White card on grey column */
     border-radius: 12px;
     border: 1px solid transparent;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: grab;
     box-shadow: var(--shadow-sm);
 }

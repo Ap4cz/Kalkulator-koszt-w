@@ -160,6 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (error) console.error('Error updating expense:', error.message);
     }
 
+    async function batchUpdateExpensesInDb(updates) {
+        const { error } = await supabaseClient
+            .from('expenses')
+            .upsert(updates);
+
+        if (error) console.error('Error batch updating expenses:', error.message);
+    }
+
     // -- UI Functions --
     function setActiveTab(tabId) {
         state.activeTab = tabId;
@@ -365,9 +373,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateSummary();
 
-        // Batch update Supabase
-        for (const up of updates) {
-            await updateExpenseInDb(up.id, { type: up.type, sort_order: up.sort_order });
+        // Optimized: Single batch update instead of loop
+        if (updates.length > 0) {
+            await batchUpdateExpensesInDb(updates);
         }
     }
 
