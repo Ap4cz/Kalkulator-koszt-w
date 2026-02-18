@@ -57,14 +57,20 @@
 
                 <div class="expenses-grid">
                     <div class="expense-column">
-                        <h3>Koszty Stałe</h3>
+                        <div class="column-header">
+                            <h3>Koszty Stałe</h3>
+                            <button class="sort-btn" data-type="fixed" title="Sortuj po kwocie">⇅</button>
+                        </div>
                         <ul id="expenses-list-fixed">
                             <!-- Fixed expenses will go here -->
                         </ul>
                     </div>
 
                     <div class="expense-column">
-                        <h3>Koszty Zmienne</h3>
+                        <div class="column-header">
+                            <h3>Koszty Zmienne</h3>
+                            <button class="sort-btn" data-type="variable" title="Sortuj po kwocie">⇅</button>
+                        </div>
                         <ul id="expenses-list-variable">
                             <!-- Variable expenses will go here -->
                         </ul>

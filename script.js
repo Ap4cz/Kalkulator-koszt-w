@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     const state = {
         activeTab: 'current',
+        sortDirections: {
+            fixed: 'desc',
+            variable: 'desc'
+        },
         current: {
             income: 0,
             expenses: []
@@ -68,6 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
         addExpenseBtn.addEventListener('click', addExpense);
         expenseAmountInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') addExpense();
+        });
+
+        // -- Sort Buttons --
+        document.querySelectorAll('.sort-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                sortExpensesByAmount(type);
+            });
         });
     }
 
@@ -175,6 +187,38 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.toggle('active', btn.dataset.tab === tabId);
         });
         updateView();
+    }
+
+    async function sortExpensesByAmount(type) {
+        const month = state.activeTab;
+        const expenses = state[month].expenses.filter(exp => exp.type === type);
+        const otherExpenses = state[month].expenses.filter(exp => exp.type !== type);
+
+        // Toggle direction
+        state.sortDirections[type] = state.sortDirections[type] === 'desc' ? 'asc' : 'desc';
+        const direction = state.sortDirections[type];
+
+        // Sort
+        expenses.sort((a, b) => {
+            return direction === 'desc' ? b.amount - a.amount : a.amount - b.amount;
+        });
+
+        // Combine back
+        state[month].expenses = (type === 'fixed')
+            ? [...expenses, ...otherExpenses]
+            : [...otherExpenses, ...expenses];
+
+        // Update all sort_orders in state
+        const updates = state[month].expenses.map((exp, index) => {
+            exp.sort_order = index;
+            return { id: exp.id, sort_order: index };
+        });
+
+        renderExpenses();
+        updateSummary();
+
+        // Sync all orders to DB
+        await batchUpdateExpensesInDb(updates);
     }
 
     function updateView() {
