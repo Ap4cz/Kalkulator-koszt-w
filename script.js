@@ -99,6 +99,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyTheme(color) {
         document.documentElement.style.setProperty('--primary-color', color);
 
+        const bgMap = {
+            '#4f46e5': '#f5f3ff', // Indigo
+            '#3b82f6': '#eff6ff', // Blue
+            '#10b981': '#ecfdf5', // Green
+            '#ec4899': '#fdf2f8', // Pink
+            '#8b5cf6': '#f5f3ff'  // Purple
+        };
+
+        const bgColor = bgMap[color] || '#f8fafc';
+        document.documentElement.style.setProperty('--bg-accent', bgColor);
+
         // Update active class
         document.querySelectorAll('.theme-dot').forEach(dot => {
             dot.classList.toggle('active', dot.dataset.theme === color);
