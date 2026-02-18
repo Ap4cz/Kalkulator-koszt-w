@@ -47,7 +47,24 @@
                 <div class="add-expense-form">
                     <div class="input-group">
                         <label for="expense-name">Nazwa wydatku</label>
-                        <input type="text" id="expense-name" placeholder="np. Czynsz">
+                        <div class="name-input-wrapper">
+                            <button id="emoji-trigger" type="button" class="emoji-btn" title="Dodaj emoji">😊</button>
+                            <input type="text" id="expense-name" placeholder="np. Czynsz">
+                            <div id="emoji-picker" class="emoji-picker hidden">
+                                <div class="picker-header">
+                                    <input type="text" id="emoji-search" placeholder="Wyszukaj emoji...">
+                                </div>
+                                <div class="picker-tabs">
+                                    <button class="picker-tab active" data-cat="smileys" title="Uśmiechy">😀</button>
+                                    <button class="picker-tab" data-cat="people" title="Ludzie">👋</button>
+                                    <button class="picker-tab" data-cat="food" title="Jedzenie">🍕</button>
+                                    <button class="picker-tab" data-cat="activities" title="Aktywność">⚽</button>
+                                    <button class="picker-tab" data-cat="travel" title="Podróże">🚗</button>
+                                    <button class="picker-tab" data-cat="objects" title="Obiekty">💡</button>
+                                </div>
+                                <div id="emoji-list" class="emoji-list"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label for="expense-amount">Kwota (PLN)</label>

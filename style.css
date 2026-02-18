@@ -245,8 +245,151 @@ h2 {
     transform: translateY(-1px);
 }
 
-.btn-primary:active {
-    transform: translateY(0);
+/* Expense Form Styling */
+.name-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.emoji-btn {
+    background: #f1f5f9;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1.25rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoji-btn:hover {
+    background: white;
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+.emoji-btn.has-emoji {
+    border-color: var(--primary-color);
+    background: var(--bg-accent);
+}
+
+/* Emoji Picker */
+.emoji-picker {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    width: 320px;
+    background: #242526;
+    /* Facebook Dark Mode Background */
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: slideUp 0.3s ease;
+}
+
+.emoji-picker.hidden {
+    display: none;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.picker-header input {
+    width: 100%;
+    padding: 8px 12px;
+    background: #3a3b3c;
+    border: none;
+    border-radius: 20px;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.picker-tabs {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #3a3b3c;
+    padding-bottom: 8px;
+}
+
+.picker-tab {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.picker-tab:hover,
+.picker-tab.active {
+    background: #3a3b3c;
+}
+
+.emoji-list {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.emoji-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.emoji-list::-webkit-scrollbar-thumb {
+    background: #4e4f50;
+    border-radius: 3px;
+}
+
+.emoji-item {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: transform 0.1s, background 0.2s;
+}
+
+.emoji-item:hover {
+    background: #3a3b3c;
+    transform: scale(1.2);
+}
+
+/* List Item Styling */
+.expense-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.expense-emoji-display {
+    font-size: 1.5rem;
+    min-width: 32px;
+    text-align: center;
 }
 
 .add-expense-form {

@@ -17,7 +17,17 @@ document.addEventListener('DOMContentLoaded', () => {
         next: {
             income: 0,
             expenses: []
-        }
+        },
+        selectedEmoji: ''
+    };
+
+    const emojiData = {
+        smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😋', '😛', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🥳'],
+        people: ['👋', '🤚', '🖐', '✋', '🖖', '👌', '🤌', '🤏', '✌', '🤞', '🫰', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐'],
+        food: ['🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🫐', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌽', '🥕', '🫒', '🧄', '🧅', '🍞', '🍕', '🍔', '🍟', '🥪'],
+        activities: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼'],
+        travel: ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🏎', '🏍', '🛵', '🚲', '🛼', '🚠', '🚋', '🚃', '🚄', '🚅', '🚆', '🚇', '🚈', '🚉', '🛩', '🛳'],
+        objects: ['⌚', '📱', '📲', '💻', '⌨', '🖥', '🖨', '🖱', '🖲', '🕹', '🗜', '💽', ' floppy', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽', '🎞', '📞', '☎', '📟', '📠', '📺', '📻', '🎙', '💡']
     };
 
     // DOM Elements
@@ -28,6 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const addExpenseBtn = document.getElementById('add-expense-btn');
     const expensesListFixed = document.getElementById('expenses-list-fixed');
     const expensesListVariable = document.getElementById('expenses-list-variable');
+
+    // Emoji Picker Elements
+    const emojiTrigger = document.getElementById('emoji-trigger');
+    const emojiPicker = document.getElementById('emoji-picker');
+    const emojiSearch = document.getElementById('emoji-search');
+    const emojiListContainer = document.getElementById('emoji-list');
+    const pickerTabs = document.querySelectorAll('.picker-tab');
 
     const totalIncomeDisplay = document.getElementById('total-income');
     const totalExpensesDisplay = document.getElementById('total-expenses');
@@ -93,6 +110,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveTheme(color);
             });
         });
+
+        // -- Emoji Picker Listeners --
+        emojiTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            emojiPicker.classList.toggle('hidden');
+            if (!emojiPicker.classList.contains('hidden')) {
+                renderEmojiList('smileys');
+            }
+        });
+
+        emojiSearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            if (query) {
+                const filtered = Object.values(emojiData).flat().filter(emoji => emoji.includes(query) || emoji.length > 0); // Simplified search
+                renderFilteredEmojis(filtered);
+            } else {
+                renderEmojiList('smileys');
+            }
+        });
+
+        pickerTabs.forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.stopPropagation();
+                pickerTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                renderEmojiList(tab.dataset.cat);
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!emojiPicker.contains(e.target) && e.target !== emojiTrigger) {
+                emojiPicker.classList.add('hidden');
+            }
+        });
+    }
+
+    // -- Emoji Functions --
+    function renderEmojiList(category) {
+        emojiListContainer.innerHTML = '';
+        emojiData[category].forEach(emoji => {
+            const btn = document.createElement('button');
+            btn.className = 'emoji-item';
+            btn.textContent = emoji;
+            btn.type = 'button';
+            btn.addEventListener('click', () => selectEmoji(emoji));
+            emojiListContainer.appendChild(btn);
+        });
+    }
+
+    function renderFilteredEmojis(emojis) {
+        emojiListContainer.innerHTML = '';
+        emojis.forEach(emoji => {
+            const btn = document.createElement('button');
+            btn.className = 'emoji-item';
+            btn.textContent = emoji;
+            btn.type = 'button';
+            btn.addEventListener('click', () => selectEmoji(emoji));
+            emojiListContainer.appendChild(btn);
+        });
+    }
+
+    function selectEmoji(emoji) {
+        state.selectedEmoji = emoji;
+        emojiTrigger.textContent = emoji;
+        emojiTrigger.classList.add('has-emoji');
+        emojiPicker.classList.add('hidden');
     }
 
     // -- Theme Functions --
@@ -171,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     state[exp.month].expenses.push({
                         id: exp.id,
                         name: exp.name,
+                        emoji: exp.emoji || '',
                         amount: exp.amount,
                         type: exp.type
                     });
@@ -202,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .from('expenses')
             .insert([{
                 name: expense.name,
+                emoji: expense.emoji || '',
                 amount: expense.amount,
                 type: expense.type,
                 month: month
@@ -301,13 +386,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const tempId = Date.now().toString(); // Temporary ID until DB returns real one
-        const expense = { id: tempId, name, amount, type };
+        const emoji = state.selectedEmoji;
+        const expense = { id: tempId, name, emoji, amount, type };
 
         state[month].expenses.push(expense);
 
-        // Reset inputs immediately for better UX
+        // Reset inputs
         expenseNameInput.value = '';
         expenseAmountInput.value = '';
+        state.selectedEmoji = '';
+        emojiTrigger.textContent = '😊';
+        emojiTrigger.classList.remove('has-emoji');
         expenseNameInput.focus();
 
         renderExpenses();
@@ -354,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             li.innerHTML = `
                 <div class="expense-info">
+                    <span class="expense-emoji-display">${expense.emoji || '•'}</span>
                     <input type="text" class="expense-name-input" value="${expense.name}" aria-label="Nazwa wydatku">
                 </div>
                 <div class="expense-amount-wrapper">
