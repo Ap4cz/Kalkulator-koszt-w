@@ -256,8 +256,15 @@ h2 {
 }
 
 .expense-item.dragging {
-    opacity: 0.5;
-    transform: scale(0.98);
+    opacity: 0.4;
+    scale: 1.02;
+    background: var(--primary-color);
+    color: white;
+    z-index: 100;
+}
+
+.expense-item.dragging * {
+    color: white !important;
 }
 
 .expense-item:hover {

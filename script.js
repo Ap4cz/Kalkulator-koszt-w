@@ -74,10 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // -- Database Functions --
     async function fetchInitialData() {
         try {
-            // Fetch Expenses
+            // Fetch Expenses ordered by sort_order
             const { data: expenses, error: expError } = await supabaseClient
                 .from('expenses')
-                .select('*');
+                .select('*')
+                .order('sort_order', { ascending: true });
 
             if (expError) throw expError;
 
@@ -292,8 +293,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleDragOver(e) {
         e.preventDefault();
-        const container = e.currentTarget.closest('.expense-column');
+        const list = e.currentTarget;
+        const draggingItem = document.querySelector('.dragging');
+        const afterElement = getDragAfterElement(list, e.clientY);
+
+        const container = list.closest('.expense-column');
         container.classList.add('drag-over');
+
+        if (afterElement == null) {
+            list.appendChild(draggingItem);
+        } else {
+            list.insertBefore(draggingItem, afterElement);
+        }
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.expense-item:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
     function handleDragLeave(e) {
@@ -303,22 +328,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleDrop(e) {
         e.preventDefault();
-        const container = e.currentTarget.closest('.expense-column');
+        const list = e.currentTarget;
+        const container = list.closest('.expense-column');
         container.classList.remove('drag-over');
 
         const draggingItem = document.querySelector('.dragging');
         if (!draggingItem) return;
 
         const expenseId = draggingItem.dataset.id;
-        const targetListId = e.currentTarget.id;
-        const newType = targetListId === 'expenses-list-fixed' ? 'fixed' : 'variable';
+        const newType = list.id === 'expenses-list-fixed' ? 'fixed' : 'variable';
+        const month = state.activeTab;
 
-        const expense = state[state.activeTab].expenses.find(exp => exp.id == expenseId);
+        // Reconstruct local state from DOM order
+        const items = [...list.querySelectorAll('.expense-item')];
+        const newExpenses = [];
+        const updates = [];
 
-        if (expense && expense.type !== newType) {
-            expense.type = newType;
-            renderExpenses();
-            await updateExpenseInDb(expenseId, { type: newType });
+        // We need to merge items from BOTH lists into the state, but updated
+        // Simplest: Get all items from both lists as they are currently in DOM
+        const fixedItems = [...document.getElementById('expenses-list-fixed').querySelectorAll('.expense-item')];
+        const variableItems = [...document.getElementById('expenses-list-variable').querySelectorAll('.expense-item')];
+
+        const allDomItems = [...fixedItems.map(li => ({ id: li.dataset.id, type: 'fixed' })),
+        ...variableItems.map(li => ({ id: li.dataset.id, type: 'variable' }))];
+
+        // Update state and prep DB updates
+        state[month].expenses = allDomItems.map((item, index) => {
+            const expense = state[month].expenses.find(exp => exp.id == item.id);
+            if (expense) {
+                expense.type = item.type;
+                expense.sort_order = index;
+                updates.push({ id: expense.id, type: expense.type, sort_order: index });
+            }
+            return expense;
+        }).filter(Boolean);
+
+        updateSummary();
+
+        // Batch update Supabase
+        for (const up of updates) {
+            await updateExpenseInDb(up.id, { type: up.type, sort_order: up.sort_order });
         }
     }
 
