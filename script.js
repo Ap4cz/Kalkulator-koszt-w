@@ -39,7 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
 
     async function initApp() {
-        await fetchInitialData();
+        await Promise.all([
+            fetchInitialData(),
+            fetchTheme()
+        ]);
         updateView();
 
         // -- Event Listeners --
@@ -81,6 +84,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 sortExpensesByAmount(type);
             });
         });
+
+        // -- Theme Selector --
+        document.querySelectorAll('.theme-dot').forEach(dot => {
+            dot.addEventListener('click', () => {
+                const color = dot.dataset.theme;
+                applyTheme(color);
+                saveTheme(color);
+            });
+        });
+    }
+
+    // -- Theme Functions --
+    function applyTheme(color) {
+        document.documentElement.style.setProperty('--primary-color', color);
+
+        // Update active class
+        document.querySelectorAll('.theme-dot').forEach(dot => {
+            dot.classList.toggle('active', dot.dataset.theme === color);
+        });
+    }
+
+    async function saveTheme(color) {
+        const { error } = await supabaseClient
+            .from('settings')
+            .upsert({ key: 'theme_color', value: color }, { onConflict: 'key' });
+
+        if (error) console.error('Error saving theme:', error.message);
+    }
+
+    async function fetchTheme() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('settings')
+                .select('value')
+                .eq('key', 'theme_color')
+                .single();
+
+            if (error && error.code !== 'PGRST116') throw error; // PGRST116 is code for no rows found
+
+            if (data && data.value) {
+                applyTheme(data.value);
+            } else {
+                applyTheme('#4f46e5'); // Default
+            }
+        } catch (error) {
+            console.error('Error fetching theme:', error.message);
+        }
     }
 
     // -- Database Functions --
